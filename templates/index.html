@@ -341,6 +341,7 @@
             
             <button type="button" onclick="registerDomains()">Register Domains for Notifications</button>
             <button type="button" onclick="getDomains()">View My Registered Domains</button>
+            <button type="button" onclick="sendNotification()">Email My Expiry Report</button>
             
             <div id="notificationSuccess" class="notification-message success"></div>
             <div id="notificationError" class="notification-message error"></div>
@@ -607,6 +608,8 @@
                 performGetDomains(pendingEmail, pendingOTP);
             } else if (pendingOperation === 'unregister') {
                 performUnregistration(pendingEmail, pendingDomains, pendingOTP);
+            } else if (pendingOperation === 'send') {
+                performSendNotification(pendingEmail, pendingOTP);
             } else {
                 document.getElementById('loadingDialog').style.display = 'none';
                 showNotificationError("Unknown operation type");
@@ -838,6 +841,60 @@
                 // Request OTP first
                 requestOTP(email, 'unregister');
             }
+        }
+
+        function sendNotification() {
+            const email = document.getElementById('notificationEmail').value;
+
+            if (!email) {
+                showNotificationError("Please enter your email address");
+                return;
+            }
+
+            pendingOperation = 'send';
+            pendingEmail = email;
+
+            const storedOTP = getStoredOTP(email, 'send');
+            if (storedOTP) {
+                performSendNotification(email, storedOTP.otp);
+            } else {
+                requestOTP(email, 'send');
+            }
+        }
+
+        function performSendNotification(email, otp) {
+            document.getElementById('loadingMessage').textContent = "Sending expiry report...";
+            document.getElementById('loadingDialog').style.display = 'block';
+
+            fetch('/api/notifications/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    otp: otp
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                if (data.status === 'success') {
+                    showNotificationSuccess(data.message);
+                    pendingOperation = null;
+                    pendingEmail = null;
+                    pendingOTP = null;
+                } else if (data.require_otp) {
+                    showNotificationError(data.message);
+                    showOTPDialog();
+                } else {
+                    showNotificationError(data.message);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                showNotificationError("Error: " + error.message);
+            });
         }
         
         function displayDomains(domains, email) {
