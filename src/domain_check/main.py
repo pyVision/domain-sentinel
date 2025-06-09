@@ -98,6 +98,8 @@ class SubscriptionResponse(BaseModel):
     status: str
     message: str
     domains: Optional[List[str]] = None
+    expiring_domains: Optional[List[Dict]] = None
+    expiring_certs : Optional[List[Dict]] = None
     
 class OTPVerificationRequest(BaseModel):
     email: EmailStr
@@ -934,6 +936,7 @@ async def send_notification_email(request: SendNotificationRequest):
             "expiring_domains": result.get("expiring_domains", []),
             "expiring_certs": result.get("expiring_certs", [])
         }
+        print("Response data:", response_data)
 
         if status == "success":
             return response_data
