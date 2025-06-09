@@ -308,8 +308,10 @@ class NotificationHandler:
                 expiring_certs=ssl_results,
                 days_threshold=days_threshold
             )
-            
+
             logger.info(f"Immediate notification result: {notification_result}")
+            notification_result["expiring_domains"] = domain_results
+            notification_result["expiring_certs"] = ssl_results
             return notification_result
         except Exception as e:
             logger.error(f"Error sending immediate notification: {e}")

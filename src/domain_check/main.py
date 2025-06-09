@@ -918,10 +918,24 @@ async def send_notification_email(request: SendNotificationRequest):
         result = await notification_handler.send_immediate_notification(request.email, domains)
 
         if result.get("sent"):
-            return {"status": "success", "message": "Expiry report sent via email", "domains": domains}
+            status = "success"
+            message = "Expiry report sent via email"
         else:
-            error_msg = result.get("error", "Failed to send email")
-            return JSONResponse(content={"status": "error", "message": error_msg}, status_code=500)
+            status = "error"
+            message = result.get("error", "Failed to send email")
+
+        response_data = {
+            "status": status,
+            "message": message,
+            "domains": domains,
+            "expiring_domains": result.get("expiring_domains", []),
+            "expiring_certs": result.get("expiring_certs", [])
+        }
+
+        if status == "success":
+            return response_data
+        else:
+            return JSONResponse(content=response_data, status_code=500)
 
     except Exception as e:
         logging.error(f"Error sending notification email: {e}")

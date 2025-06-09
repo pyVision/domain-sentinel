@@ -351,6 +351,12 @@
                 <div id="domainsList"></div>
                 <button type="button" onclick="unregisterAllDomains()" class="remove-domain">Unregister All Domains</button>
             </div>
+
+            <div id="sendReportResults" class="results" style="display:none;">
+                <h3>Your Expiry Report</h3>
+                <div id="sendReportDomainTable"></div>
+                <div id="sendReportCertTable"></div>
+            </div>
         </div>
 
         <div class="about-section">
@@ -890,6 +896,10 @@
                 } else {
                     showNotificationError(data.message);
                 }
+
+                if (data.expiring_domains || data.expiring_certs) {
+                    displayExpiryReport(data.expiring_domains, data.expiring_certs);
+                }
             })
             .catch(error => {
                 document.getElementById('loadingDialog').style.display = 'none';
@@ -919,6 +929,39 @@
             });
             
             document.getElementById('registeredDomains').style.display = 'block';
+        }
+
+        function displayExpiryReport(domains, certs) {
+            const reportSection = document.getElementById('sendReportResults');
+            const domainTable = document.getElementById('sendReportDomainTable');
+            const certTable = document.getElementById('sendReportCertTable');
+
+            domainTable.innerHTML = '';
+            certTable.innerHTML = '';
+
+            let hasData = false;
+
+            if (domains && domains.length > 0) {
+                let html = '<h4>Domains Expiring Soon</h4><table><tr><th>Domain</th><th>Expiry Date</th><th>Days Left</th><th>Registrar</th></tr>';
+                domains.forEach(d => {
+                    html += `<tr><td>${d.domain}</td><td>${d.expiry_date}</td><td>${d.days_left}</td><td>${d.registrar}</td></tr>`;
+                });
+                html += '</table>';
+                domainTable.innerHTML = html;
+                hasData = true;
+            }
+
+            if (certs && certs.length > 0) {
+                let html = '<h4>SSL Certificates Expiring Soon</h4><table><tr><th>Hostname</th><th>Issuer</th><th>Expiry Date</th><th>Days Left</th></tr>';
+                certs.forEach(c => {
+                    html += `<tr><td>${c.hostname}</td><td>${c.cert_issuer || ''}</td><td>${c.not_after}</td><td>${c.days_to_expire}</td></tr>`;
+                });
+                html += '</table>';
+                certTable.innerHTML = html;
+                hasData = true;
+            }
+
+            reportSection.style.display = hasData ? 'block' : 'none';
         }
         
         function showNotificationSuccess(message) {
