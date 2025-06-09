@@ -29,6 +29,9 @@ posthog.api_key = POSTHOG_API_KEY
 posthog.host = POSTHOG_HOST
 
 
+# Get Redis key prefix from environment or use default
+redis_prefix = os.environ.get("REDIS_PREFIX", "domain-sentinel:")
+
 redis_client = redis.Redis(
                     host=initialization_result["env_vars"]["REDIS_HOST"],
                     port=initialization_result["env_vars"]["REDIS_PORT"],
@@ -38,8 +41,8 @@ redis_client = redis.Redis(
             )
 
 ssl_checker = SSLChecker()
-notification_handler = NotificationHandler(redis_client=redis_client)
-otp_handler = OTPHandler(redis_client=redis_client)
+notification_handler = NotificationHandler(redis_client=redis_client, redis_prefix=redis_prefix)
+otp_handler = OTPHandler(redis_client=redis_client, redis_prefix=redis_prefix)
 
 # Keep the rest of your imports and functions
 import ssl
