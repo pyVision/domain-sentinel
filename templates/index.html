@@ -480,16 +480,19 @@
             for (var i = 0; i < tabcontent.length; i++) {
                 tabcontent[i].classList.remove("active");
             }
-            
+
             // Remove active class from all tab buttons
             var tablinks = document.getElementsByClassName("tab-button");
             for (var i = 0; i < tablinks.length; i++) {
                 tablinks[i].classList.remove("active");
             }
-            
+
             // Show the current tab and mark its button as active
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.classList.add("active");
+
+            // Clear any displayed expiry report when switching tabs
+            clearExpiryReport();
         }
         
         // Notification API functions
@@ -624,6 +627,8 @@
 
         
         function registerDomains() {
+            clearExpiryReport();
+
             const email = document.getElementById('notificationEmail').value;
             const domainsText = document.getElementById('notificationDomains').value;
             let domains = [];
@@ -703,6 +708,8 @@
         }
         
         function getDomains() {
+            clearExpiryReport();
+
             const email = document.getElementById('notificationEmail').value;
             
             if (!email) {
@@ -806,7 +813,9 @@
             });
         }
         
-        function unregisterDomain(email, domain) {
+       function unregisterDomain(email, domain) {
+            clearExpiryReport();
+
             // Store details for pending operation
             pendingOperation = 'unregister';
             pendingEmail = email;
@@ -822,7 +831,9 @@
             }
         }
         
-        function unregisterAllDomains() {
+       function unregisterAllDomains() {
+            clearExpiryReport();
+
             const email = document.getElementById('notificationEmail').value;
             
             if (!email) {
@@ -849,7 +860,9 @@
             }
         }
 
-        function sendNotification() {
+       function sendNotification() {
+            clearExpiryReport();
+
             const email = document.getElementById('notificationEmail').value;
 
             if (!email) {
@@ -927,6 +940,17 @@
             });
             
             document.getElementById('registeredDomains').style.display = 'block';
+        }
+
+        // Clear the inline expiry report and hide the section
+        function clearExpiryReport() {
+            const reportSection = document.getElementById('sendReportResults');
+            const domainTable = document.getElementById('sendReportDomainTable');
+            const certTable = document.getElementById('sendReportCertTable');
+
+            if (domainTable) domainTable.innerHTML = '';
+            if (certTable) certTable.innerHTML = '';
+            if (reportSection) reportSection.style.display = 'none';
         }
 
         function displayExpiryReport(domains, certs) {
