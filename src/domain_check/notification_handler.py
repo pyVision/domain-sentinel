@@ -32,7 +32,7 @@ class NotificationHandler:
     Google Cloud Memorystore for Redis.
     """
     
-    def __init__(self,redis_client: Optional[redis.Redis] = None):
+    def __init__(self, redis_client: Optional[redis.Redis] = None, redis_prefix: str = "domain-sentinel:"):
         """
         Initialize the Redis connection using environment variables.
         
@@ -40,6 +40,7 @@ class NotificationHandler:
             REDIS_HOST: Redis server hostname (defaults to localhost)
             REDIS_PORT: Redis server port (defaults to 6379)
             REDIS_PASSWORD: Redis server password (optional)
+            REDIS_PREFIX: Redis key prefix (defaults to 'domain-sentinel:')
         """
         try:
             # If a Redis client is provided, use it; otherwise, create a new one
@@ -61,7 +62,12 @@ class NotificationHandler:
                 logger.info(f"Successfully connected to Redis at {redis_host}:{redis_port}")
                 # Test the connection
             else:
-                self.redis_client= redis_client    
+                self.redis_client = redis_client    
+            
+            # Set the Redis key prefix - use environment variable or default
+            self.redis_prefix = redis_prefix
+            logger.info(f"Using Redis key prefix: {self.redis_prefix}")
+            
             self.redis_client.ping()
             logger.info(f"Successfully connected to Redis ")
 
@@ -70,6 +76,18 @@ class NotificationHandler:
             logger.error(f"Failed to connect to Redis: {e}")
             # Don't raise exception here, allow the application to start
             # even if Redis is not available
+    
+    def _add_prefix(self, key: str) -> str:
+        """
+        Add the Redis prefix to a key.
+        
+        Args:
+            key: The original key
+        
+        Returns:
+            str: The key with the prefix added
+        """
+        return f"{self.redis_prefix}{key}"
     
     def _hash_email(self, email: str) -> str:
         """
@@ -100,6 +118,8 @@ class NotificationHandler:
         try:
             # Create a hash of the email for the key
             email_hash = self._hash_email(email)
+            # Add prefix to the key
+            prefixed_key = self._add_prefix(email_hash)
             
             # Check if the email already has domains registered
             existing_domains = self.get_domains(email)
@@ -108,7 +128,7 @@ class NotificationHandler:
             all_domains = list(set(existing_domains + domains))
             
             # Store the domains in Redis with the email hash as the key
-            # Format: key=email_hash, value={"domains": ["domain1", "domain2", ...], "status": "active"}
+            # Format: key=prefix:email_hash, value={"domains": ["domain1", "domain2", ...], "status": "active"}
             domain_data = {
                 "email": email,
                 "domains": all_domains,
@@ -119,9 +139,9 @@ class NotificationHandler:
             for key, value in domain_data.items():
                 if isinstance(value, list):
                     # Store lists as comma-separated strings
-                    self.redis_client.hset(email_hash, key, ",".join(value))
+                    self.redis_client.hset(prefixed_key, key, ",".join(value))
                 else:
-                    self.redis_client.hset(email_hash, key, value)
+                    self.redis_client.hset(prefixed_key, key, value)
             
             # Determine which domains are newly added
             new_domains = all_domains
@@ -169,9 +189,11 @@ class NotificationHandler:
         """
         try:
             email_hash = self._hash_email(email)
+            # Add prefix to the key
+            prefixed_key = self._add_prefix(email_hash)
             
             # Get domain data from Redis
-            domain_data = self.redis_client.hgetall(email_hash)
+            domain_data = self.redis_client.hgetall(prefixed_key)
             
             if not domain_data:
                 return []
@@ -202,9 +224,11 @@ class NotificationHandler:
         """
         try:
             email_hash = self._hash_email(email)
+            # Add prefix to the key
+            prefixed_key = self._add_prefix(email_hash)
             
             # Get current domain data
-            domain_data = self.redis_client.hgetall(email_hash)
+            domain_data = self.redis_client.hgetall(prefixed_key)
             
             if not domain_data:
                 return {
@@ -218,7 +242,7 @@ class NotificationHandler:
                 updated_domains = [d for d in current_domains if d not in domains]
                 
                 # Update Redis with the remaining domains
-                self.redis_client.hset(email_hash, "domains", ",".join(updated_domains))
+                self.redis_client.hset(prefixed_key, "domains", ",".join(updated_domains))
                 
                 return {
                     "status": "success",
@@ -227,7 +251,7 @@ class NotificationHandler:
                 }
             else:
                 # Mark the entire subscription as inactive
-                self.redis_client.hset(email_hash, "status", "inactive")
+                self.redis_client.hset(prefixed_key, "status", "inactive")
                 
                 return {
                     "status": "success",
@@ -245,8 +269,8 @@ class NotificationHandler:
             List of subscription details (email, domains, status)
         """
         try:
-            # Get all keys (email hashes)
-            all_keys = self.redis_client.keys("*")
+            # Get all keys with the prefix
+            all_keys = self.redis_client.keys(f"{self.redis_prefix}*")
             subscriptions = []
             
             for key in all_keys:
