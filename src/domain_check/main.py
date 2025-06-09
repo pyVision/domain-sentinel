@@ -90,10 +90,16 @@ class DomainUnregistrationRequest(BaseModel):
     domains: Optional[List[str]] = None
     otp: str  # Include OTP directly in the request for verification
 
+class SendNotificationRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
 class SubscriptionResponse(BaseModel):
     status: str
     message: str
     domains: Optional[List[str]] = None
+    expiring_domains: Optional[List[Dict]] = None
+    expiring_certs : Optional[List[Dict]] = None
     
 class OTPVerificationRequest(BaseModel):
     email: EmailStr
@@ -885,6 +891,61 @@ async def get_all_subscriptions():
     """
     subscriptions = notification_handler.get_all_subscriptions()
     return {"subscriptions": subscriptions, "count": len(subscriptions)}
+
+@app.post("/api/notifications/send", response_model=SubscriptionResponse)
+async def send_notification_email(request: SendNotificationRequest):
+    """Send an immediate expiry report for all domains registered by the user."""
+    try:
+        if not request.otp:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "Verification code required. Please provide a verification code.",
+                "require_otp": True
+            }, status_code=403)
+
+        success, message = otp_handler.verify_otp(request.email, request.otp)
+        logging.info(f"OTP verification for send: {success}, message: {message}")
+
+        if not success:
+            return JSONResponse(content={
+                "status": "error",
+                "message": f"Verification failed: {message}",
+                "require_otp": True
+            }, status_code=403)
+
+        domains = notification_handler.get_domains(request.email)
+        if not domains:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "No domains registered for this email address"
+            }, status_code=404)
+
+        result = await notification_handler.send_immediate_notification(request.email, domains)
+
+        if result.get("sent"):
+            status = "success"
+            message = "Expiry report sent via email"
+        else:
+            status = "error"
+            message = result.get("error", "Failed to send email")
+
+        response_data = {
+            "status": status,
+            "message": message,
+            "domains": domains,
+            "expiring_domains": result.get("expiring_domains", []),
+            "expiring_certs": result.get("expiring_certs", [])
+        }
+        print("Response data:", response_data)
+
+        if status == "success":
+            return response_data
+        else:
+            return JSONResponse(content=response_data, status_code=500)
+
+    except Exception as e:
+        logging.error(f"Error sending notification email: {e}")
+        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
 
 # Add after the existing API endpoints
 

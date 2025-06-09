@@ -341,6 +341,7 @@
             
             <button type="button" onclick="registerDomains()">Register Domains for Notifications</button>
             <button type="button" onclick="getDomains()">View My Registered Domains</button>
+            <button type="button" onclick="sendNotification()">Email My Expiry Report</button>
             
             <div id="notificationSuccess" class="notification-message success"></div>
             <div id="notificationError" class="notification-message error"></div>
@@ -349,6 +350,12 @@
                 <h3>Your Registered Domains</h3>
                 <div id="domainsList"></div>
                 <button type="button" onclick="unregisterAllDomains()" class="remove-domain">Unregister All Domains</button>
+            </div>
+
+            <div id="sendReportResults" class="results" style="display:none;">
+                <h3>Your Expiry Report</h3>
+                <div id="sendReportDomainTable"></div>
+                <div id="sendReportCertTable"></div>
             </div>
         </div>
 
@@ -473,16 +480,19 @@
             for (var i = 0; i < tabcontent.length; i++) {
                 tabcontent[i].classList.remove("active");
             }
-            
+
             // Remove active class from all tab buttons
             var tablinks = document.getElementsByClassName("tab-button");
             for (var i = 0; i < tablinks.length; i++) {
                 tablinks[i].classList.remove("active");
             }
-            
+
             // Show the current tab and mark its button as active
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.classList.add("active");
+
+            // Clear any displayed expiry report when switching tabs
+            clearExpiryReport();
         }
         
         // Notification API functions
@@ -607,6 +617,8 @@
                 performGetDomains(pendingEmail, pendingOTP);
             } else if (pendingOperation === 'unregister') {
                 performUnregistration(pendingEmail, pendingDomains, pendingOTP);
+            } else if (pendingOperation === 'send') {
+                performSendNotification(pendingEmail, pendingOTP);
             } else {
                 document.getElementById('loadingDialog').style.display = 'none';
                 showNotificationError("Unknown operation type");
@@ -615,6 +627,8 @@
 
         
         function registerDomains() {
+            clearExpiryReport();
+
             const email = document.getElementById('notificationEmail').value;
             const domainsText = document.getElementById('notificationDomains').value;
             let domains = [];
@@ -694,6 +708,8 @@
         }
         
         function getDomains() {
+            clearExpiryReport();
+
             const email = document.getElementById('notificationEmail').value;
             
             if (!email) {
@@ -797,7 +813,9 @@
             });
         }
         
-        function unregisterDomain(email, domain) {
+       function unregisterDomain(email, domain) {
+            clearExpiryReport();
+
             // Store details for pending operation
             pendingOperation = 'unregister';
             pendingEmail = email;
@@ -813,7 +831,9 @@
             }
         }
         
-        function unregisterAllDomains() {
+       function unregisterAllDomains() {
+            clearExpiryReport();
+
             const email = document.getElementById('notificationEmail').value;
             
             if (!email) {
@@ -839,6 +859,64 @@
                 requestOTP(email, 'unregister');
             }
         }
+
+       function sendNotification() {
+            clearExpiryReport();
+
+            const email = document.getElementById('notificationEmail').value;
+
+            if (!email) {
+                showNotificationError("Please enter your email address");
+                return;
+            }
+
+            pendingOperation = 'send';
+            pendingEmail = email;
+
+            const storedOTP = getStoredOTP(email, 'send');
+            if (storedOTP) {
+                performSendNotification(email, storedOTP.otp);
+            } else {
+                requestOTP(email, 'send');
+            }
+        }
+
+        function performSendNotification(email, otp) {
+            document.getElementById('loadingMessage').textContent = "Sending expiry report...";
+            document.getElementById('loadingDialog').style.display = 'block';
+
+            fetch('/api/notifications/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    otp: otp
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                if (data.status === 'success') {
+                    showNotificationSuccess(data.message);
+                    pendingOperation = null;
+                    pendingEmail = null;
+                    pendingOTP = null;
+                } else if (data.require_otp) {
+                    showNotificationError(data.message);
+                    showOTPDialog();
+                } else {
+                    showNotificationError(data.message);
+                }
+
+                displayExpiryReport(data.expiring_domains, data.expiring_certs);
+            })
+            .catch(error => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                showNotificationError("Error: " + error.message);
+            });
+        }
         
         function displayDomains(domains, email) {
             const domainsListElement = document.getElementById('domainsList');
@@ -862,6 +940,54 @@
             });
             
             document.getElementById('registeredDomains').style.display = 'block';
+        }
+
+        // Clear the inline expiry report and hide the section
+        function clearExpiryReport() {
+            const reportSection = document.getElementById('sendReportResults');
+            const domainTable = document.getElementById('sendReportDomainTable');
+            const certTable = document.getElementById('sendReportCertTable');
+
+            if (domainTable) domainTable.innerHTML = '';
+            if (certTable) certTable.innerHTML = '';
+            if (reportSection) reportSection.style.display = 'none';
+        }
+
+        function displayExpiryReport(domains, certs) {
+            const reportSection = document.getElementById('sendReportResults');
+            const domainTable = document.getElementById('sendReportDomainTable');
+            const certTable = document.getElementById('sendReportCertTable');
+
+            domainTable.innerHTML = '';
+            certTable.innerHTML = '';
+
+            let hasData = false;
+
+            if (domains && domains.length > 0) {
+                let html = '<h4>Domains Expiring Soon</h4><table><tr><th>Domain</th><th>Expiry Date</th><th>Days Left</th><th>Registrar</th></tr>';
+                domains.forEach(d => {
+                    html += `<tr><td>${d.domain}</td><td>${d.expiry_date}</td><td>${d.days_left}</td><td>${d.registrar}</td></tr>`;
+                });
+                html += '</table>';
+                domainTable.innerHTML = html;
+                hasData = true;
+            }
+
+            if (certs && certs.length > 0) {
+                let html = '<h4>SSL Certificates Expiring Soon</h4><table><tr><th>Hostname</th><th>Issuer</th><th>Expiry Date</th><th>Days Left</th></tr>';
+                certs.forEach(c => {
+                    html += `<tr><td>${c.hostname}</td><td>${c.cert_issuer || ''}</td><td>${c.not_after}</td><td>${c.days_to_expire}</td></tr>`;
+                });
+                html += '</table>';
+                certTable.innerHTML = html;
+                hasData = true;
+            }
+
+            if (!hasData) {
+                domainTable.innerHTML = '<p>No domains or SSL certificates are expiring soon.</p>';
+            }
+
+            reportSection.style.display = 'block';
         }
         
         function showNotificationSuccess(message) {
