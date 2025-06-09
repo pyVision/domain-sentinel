@@ -897,9 +897,7 @@
                     showNotificationError(data.message);
                 }
 
-                if (data.expiring_domains || data.expiring_certs) {
-                    displayExpiryReport(data.expiring_domains, data.expiring_certs);
-                }
+                displayExpiryReport(data.expiring_domains, data.expiring_certs);
             })
             .catch(error => {
                 document.getElementById('loadingDialog').style.display = 'none';
@@ -961,7 +959,11 @@
                 hasData = true;
             }
 
-            reportSection.style.display = hasData ? 'block' : 'none';
+            if (!hasData) {
+                domainTable.innerHTML = '<p>No domains or SSL certificates are expiring soon.</p>';
+            }
+
+            reportSection.style.display = 'block';
         }
         
         function showNotificationSuccess(message) {
