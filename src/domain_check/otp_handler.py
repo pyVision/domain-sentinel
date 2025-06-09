@@ -29,7 +29,7 @@ class OTPHandler:
     for email authentication during domain registration and viewing.
     """
     
-    def __init__(self, redis_client: Optional[redis.Redis] = None):
+    def __init__(self, redis_client: Optional[redis.Redis] = None, redis_prefix: str = "domain-sentinel:"):
         """Initialize the OTP handler with Redis connection."""
         try:
 
@@ -46,6 +46,10 @@ class OTPHandler:
                     )
             else:
                 self.redis_client = redis_client
+            
+            # Set the Redis key prefix - use environment variable or default
+            self.redis_prefix = os.environ.get("REDIS_PREFIX", redis_prefix)
+            logger.info(f"Using Redis key prefix: {self.redis_prefix}")
                 
             logger.info("Connected to local Redis")
                 
@@ -57,9 +61,22 @@ class OTPHandler:
             logger.error(f"Failed to connect to Redis: {e}")
             # Continue without Redis - will use in-memory storage
             self.redis_client = None
+            self.redis_prefix = ""
             
         # In-memory storage as fallback
         self.otp_store = {}
+    
+    def _add_prefix(self, key: str) -> str:
+        """
+        Add the Redis prefix to a key.
+        
+        Args:
+            key: The original key
+        
+        Returns:
+            str: The key with the prefix added
+        """
+        return f"{self.redis_prefix}{key}"
     
     def _hash_email(self, email: str) -> str:
         """
@@ -88,7 +105,9 @@ class OTPHandler:
                 - Created time (str or None): ISO formatted creation timestamp
         """
         email_hash = self._hash_email(email)
-        otp_key = f"otp:{email_hash}"
+        base_key = f"otp:{email_hash}"
+        # Add prefix to the key
+        prefixed_key = self._add_prefix(base_key)
         
         try:
             # Get OTP data
@@ -96,7 +115,7 @@ class OTPHandler:
             
             if self.redis_client:
                 # Get from Redis
-                redis_data = self.redis_client.hgetall(otp_key)
+                redis_data = self.redis_client.hgetall(prefixed_key)
                 
                 if redis_data:
                     otp_data = {k: v for k, v in redis_data.items()}
@@ -163,15 +182,17 @@ class OTPHandler:
         try:
             if self.redis_client:
                 # Store in Redis
-                otp_key = f"otp:{email_hash}"
+                base_key = f"otp:{email_hash}"
+                # Add prefix to the key
+                prefixed_key = self._add_prefix(base_key)
                 
                 # Store as a hash in Redis
                 for key, value in otp_data.items():
-                    self.redis_client.hset(otp_key, key, value)
+                    self.redis_client.hset(prefixed_key, key, value)
                 
                 # Set expiration in Redis based on the configuration
                 expiry_seconds = int(initialization_result["env_vars"].get("OTP_EXPIRY_DAYS", 30)) * 24 * 60 * 60
-                self.redis_client.expire(otp_key, expiry_seconds)
+                self.redis_client.expire(prefixed_key, expiry_seconds)
             else:
                 # Use in-memory storage
                 self.otp_store[email_hash] = otp_data
@@ -198,7 +219,9 @@ class OTPHandler:
         
         """
         email_hash = self._hash_email(email)
-        otp_key = f"otp:{email_hash}"
+        base_key = f"otp:{email_hash}"
+        # Add prefix to the key
+        prefixed_key = self._add_prefix(base_key)
         
         try:
             # Get OTP data
@@ -206,7 +229,7 @@ class OTPHandler:
             
             if self.redis_client:
                 # Get from Redis
-                redis_data = self.redis_client.hgetall(otp_key)
+                redis_data = self.redis_client.hgetall(prefixed_key)
                 
                 if redis_data:
                     # Convert bytes to string
@@ -233,7 +256,7 @@ class OTPHandler:
                 return True, "OTP reverified successfully"
             # Mark as verified
             if self.redis_client:
-                self.redis_client.hset(otp_key, "verified", "true")
+                self.redis_client.hset(prefixed_key, "verified", "true")
             else:
                 self.otp_store[email_hash]["verified"] = "true"
             
@@ -346,12 +369,14 @@ class OTPHandler:
             bool: True if reset was successful
         """
         email_hash = self._hash_email(email)
-        otp_key = f"otp:{email_hash}"
+        base_key = f"otp:{email_hash}"
+        # Add prefix to the key
+        prefixed_key = self._add_prefix(base_key)
         
         try:
             if self.redis_client:
                 # Delete from Redis
-                self.redis_client.delete(otp_key)
+                self.redis_client.delete(prefixed_key)
             else:
                 # Delete from in-memory storage
                 if email_hash in self.otp_store:

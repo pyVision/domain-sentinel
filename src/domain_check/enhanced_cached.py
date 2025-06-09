@@ -2,11 +2,15 @@ from aiocache.base import SENTINEL
 from aiocache.decorators import cached as original_cached
 import logging
 import asyncio
+import os
 from aiocache import Cache, RedisCache
 from aiocache.serializers import JsonSerializer
 
 
 logger = logging.getLogger(__name__)
+
+# Get Redis key prefix from environment or use default
+REDIS_PREFIX = os.environ.get("REDIS_PREFIX", "domain-sentinel:")
 
 class enhanced_cached(original_cached):
     """
@@ -109,9 +113,12 @@ class enhanced_cached(original_cached):
             else:
                 base_key = f"{self.shared_context}:{base_key}"
         
-        # Apply prefix if specified
+        # Apply custom prefix if specified
         if self.cache_key_prefix:
             base_key = f"{self.cache_key_prefix}:{base_key}"
+        
+        # Always apply the global Redis prefix
+        base_key = f"{REDIS_PREFIX}{base_key}"
             
         return base_key
 
