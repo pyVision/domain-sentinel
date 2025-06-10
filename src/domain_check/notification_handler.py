@@ -12,13 +12,7 @@ from .init_application import initialization_result
 from .domain_check import check_domains
 from .ssl_check import SSLChecker
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filename='notification_handler.log'
-)
-
+# Configure module logger
 logger = logging.getLogger(__name__)
 if initialization_result["debug_mode"]:
     logger.setLevel(logging.DEBUG)

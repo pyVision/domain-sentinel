@@ -25,23 +25,7 @@ from typing import List
 from dataclasses import dataclass
 from typing import Any, Optional, Pattern,Dict
 
-# Configure logging with log rotation
-import logging.handlers
-
-# Set up rotating file handler for logging
-log_file = 'domain_check.log'
-max_bytes = 10 * 1024 * 1024  # 10 MB
-backup_count = 1  # Number of backup files to keep
-
-handler = logging.handlers.RotatingFileHandler(
-    log_file, maxBytes=max_bytes, backupCount=backup_count
-)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[handler, logging.StreamHandler()]  # Log to both file and console
-)
+logger = logging.getLogger(__name__)
 
 # Regex pattern to match IPv4 or IPv6 addresses
 # thanks to https://www.regextester.com/104038

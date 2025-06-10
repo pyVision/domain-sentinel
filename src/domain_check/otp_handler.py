@@ -12,13 +12,7 @@ from typing import Dict, Any, Optional, Tuple
 
 from .init_application import initialization_result
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filename='otp_handler.log'
-)
-
+# Configure module logger
 logger = logging.getLogger(__name__)
 if initialization_result["debug_mode"]:
     logger.setLevel(logging.DEBUG)
