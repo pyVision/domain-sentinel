@@ -178,7 +178,6 @@ async def scheduled_domain_check():
             json.dump(results, f, indent=2)
         
         logging.info(f"Results saved to {results_file}")
-        print(f"Results saved to {results_file}")
 
         # Track successful completion
         try:
@@ -936,7 +935,7 @@ async def send_notification_email(request: SendNotificationRequest):
             "expiring_domains": result.get("expiring_domains", []),
             "expiring_certs": result.get("expiring_certs", [])
         }
-        print("Response data:", response_data)
+        logging.debug("Response data: %s", response_data)
 
         if status == "success":
             return response_data

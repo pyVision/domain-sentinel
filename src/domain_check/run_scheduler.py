@@ -52,9 +52,9 @@ def main():
     results = scheduler.run_scheduled_check()
     
     # Print results summary
-    print(f"Check completed at {results['end_time']}")
-    print(f"Duration: {results['duration_seconds']:.2f} seconds")
-    print(f"Notifications sent: {results['notifications_sent']}")
+    logger.info(f"Check completed at {results['end_time']}")
+    logger.info(f"Duration: {results['duration_seconds']:.2f} seconds")
+    logger.info(f"Notifications sent: {results['notifications_sent']}")
     
     # Save results to a JSON file for record-keeping
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -69,7 +69,6 @@ def main():
         json.dump(results, f, indent=2)
     
     logger.info(f"Results saved to {results_file}")
-    print(f"Results saved to {results_file}")
     
     return 0
 

@@ -10,7 +10,7 @@ try:
     from dateutil import parser
     import asyncio
 except ImportError:
-    print("Please install the python-whois package: pip install python-whois")
+    logging.error("Please install the python-whois package: pip install python-whois")
     raise
 
 import ssl
@@ -149,7 +149,7 @@ async def check_domain_expiry(domain: str) -> WhoisEntry:
                 tlds_path = os.path.join(
                     os.getcwd(), os.path.dirname(__file__), "data", "public_suffix_list.dat"
                 )
-                print(f"Loading TLDs from {tlds_path}")
+                logging.info(f"Loading TLDs from {tlds_path}")
                 with open(tlds_path, encoding="utf-8") as tlds_fp:
                     suffixes = set(
                         line.encode("utf-8")
