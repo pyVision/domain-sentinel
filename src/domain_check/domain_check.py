@@ -25,7 +25,10 @@ from typing import List
 from dataclasses import dataclass
 from typing import Any, Optional, Pattern,Dict
 
-logger = logging.getLogger(__name__)
+app_name = initialization_result.get("app_name", __name__)
+logger = logging.getLogger(app_name)
+log_level = getattr(logging, initialization_result.get("log_level", "INFO"))
+logger.setLevel(log_level)
 
 # Regex pattern to match IPv4 or IPv6 addresses
 # thanks to https://www.regextester.com/104038

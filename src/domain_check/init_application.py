@@ -57,6 +57,8 @@ def load_environment() -> Dict[str, str]:
         "APP_HOST": "0.0.0.0",
         "APP_PORT": "8000",
         "DEBUG": "False",
+        "APP_NAME": "domain-sentinel",
+        "LOG_LEVEL": "INFO",
     }
     
     # Add all environment variables with defaults when specified
@@ -113,17 +115,22 @@ def init_application() -> Dict[str, Any]:
     logger.info(f"Using Redis host: {env_vars['REDIS_HOST']}")
     logger.info(f"Using SMTP server: {env_vars['SMTP_SERVER']}")
     
-    # Set debug mode
+    # Determine log level and application name
     debug_mode = env_vars["DEBUG"].lower() == "true"
+    app_name = env_vars.get("APP_NAME", "domain-sentinel")
+    log_level_str = env_vars.get("LOG_LEVEL", "DEBUG" if debug_mode else "INFO")
+
+    # Configure root logger level
+    logging.getLogger().setLevel(getattr(logging, log_level_str.upper(), logging.INFO))
     if debug_mode:
-        # Set root logger to DEBUG level
-        logging.getLogger().setLevel(logging.DEBUG)
         logger.debug("Debug mode enabled")
     
     # Return initialization results
     return {
         "initialized": True,
         "debug_mode": debug_mode,
+        "app_name": app_name,
+        "log_level": log_level_str.upper(),
         "env_vars": {k:v for k, v in env_vars.items()},
     }
 

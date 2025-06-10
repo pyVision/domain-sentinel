@@ -6,8 +6,12 @@ import os
 from aiocache import Cache, RedisCache
 from aiocache.serializers import JsonSerializer
 
+from .init_application import initialization_result
 
-logger = logging.getLogger(__name__)
+app_name = initialization_result.get("app_name", __name__)
+logger = logging.getLogger(app_name)
+log_level = getattr(logging, initialization_result.get("log_level", "INFO"))
+logger.setLevel(log_level)
 
 # Get Redis key prefix from environment or use default
 REDIS_PREFIX = os.environ.get("REDIS_PREFIX", "domain-sentinel:")

@@ -15,8 +15,11 @@ from .enhanced_cached import enhanced_cached,custom_key_builder
 from .enhanced_cached import Cache,RedisCache
 from .enhanced_cached import JsonSerializer
 from .init_application import initialization_result
-# Configure module logger
-logger = logging.getLogger(__name__)
+# Configure module logger using initialization data
+app_name = initialization_result.get("app_name", __name__)
+logger = logging.getLogger(app_name)
+log_level = getattr(logging, initialization_result.get("log_level", "INFO"))
+logger.setLevel(log_level)
 
 class SSLChecker:
     """

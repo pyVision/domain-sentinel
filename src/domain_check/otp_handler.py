@@ -12,10 +12,11 @@ from typing import Dict, Any, Optional, Tuple
 
 from .init_application import initialization_result
 
-# Configure module logger
-logger = logging.getLogger(__name__)
-if initialization_result["debug_mode"]:
-    logger.setLevel(logging.DEBUG)
+# Configure module logger using initialization data
+app_name = initialization_result.get("app_name", __name__)
+logger = logging.getLogger(app_name)
+log_level = getattr(logging, initialization_result.get("log_level", "INFO"))
+logger.setLevel(log_level)
 
 class OTPHandler:
     """
