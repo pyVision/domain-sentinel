@@ -63,7 +63,7 @@ class SSLChecker:
                 try:
                     # Fetch A records for the domain itself
                     answers = resolver.resolve(domain, record_type)
-                    print("AAA",len(answers))
+                    logging.debug("DNS answers for %s (%s): %d", domain, record_type, len(answers))
                     for rdata in answers:
                         if record_type in ['A', 'AAAA']:
                             # Add the domain itself (if it resolves)
@@ -222,14 +222,14 @@ class SSLChecker:
         try:
             # Get list of subdomains to check
             domains_to_check = set(self.get_subdomains(domain))
-            print(f"Domains to check: {domains_to_check}")
+            logging.debug("Domains to check: %s", domains_to_check)
             domains_to_check.add(domain)  # Add root domain
             
             # Check certificates for each domain/subdomain
             for d in domains_to_check:
-                print("getting the certificate info for ", d)
+                logging.debug("Getting the certificate info for %s", d)
                 r1 = await self.get_certificate_info(d)
-                print(r1)
+                logging.debug("Certificate info: %s", r1)
                 if r1:
                     days_left = r1["days_to_expire"]
                     r1["domain"] = domain

@@ -135,6 +135,6 @@ def init_application() -> Dict[str, Any]:
 
 # Run initialization if this module is imported
 initialization_result = init_application()
-print("Initialization result:", initialization_result)
+logger.debug("Initialization result: %s", initialization_result)
 # Export for use in other modules
 __all__ = ['init_application', 'load_environment', 'initialization_result']
