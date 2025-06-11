@@ -13,16 +13,11 @@ from .notification_handler import NotificationHandler
 from .domain_check import check_domains
 from .ssl_check import SSLChecker
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filename='notification_scheduler.log'
-)
-
-logger = logging.getLogger(__name__)
-if initialization_result["debug_mode"]:
-    logger.setLevel(logging.DEBUG)
+# Configure module logger using initialization data
+app_name = initialization_result.get("app_name", __name__)
+logger = logging.getLogger(app_name)
+log_level = getattr(logging, initialization_result.get("log_level", "INFO"))
+logger.setLevel(log_level)
 
 class NotificationScheduler:
     """

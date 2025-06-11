@@ -24,10 +24,11 @@ from .init_application import initialization_result
 
 from .notification_scheduler import NotificationScheduler
 
-# Configure logging based on debug mode
-logger = logging.getLogger(__name__)
-if initialization_result["debug_mode"]:
-    logger.setLevel(logging.DEBUG)
+# Configure logging based on initialization data
+app_name = initialization_result.get("app_name", __name__)
+logger = logging.getLogger(app_name)
+log_level = getattr(logging, initialization_result.get("log_level", "INFO"))
+logger.setLevel(log_level)
 
 def main():
     """Run the domain expiry notification scheduler."""

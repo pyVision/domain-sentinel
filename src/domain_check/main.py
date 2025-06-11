@@ -55,11 +55,11 @@ from typing import List, Pattern
 from dataclasses import dataclass
 import json
 
-# Configure logging
+# Configure logging using initialization data
+log_level = getattr(logging, initialization_result.get("log_level", "INFO"))
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filename='domain_check.log'
+    level=log_level,
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
 # Create FastAPI app
